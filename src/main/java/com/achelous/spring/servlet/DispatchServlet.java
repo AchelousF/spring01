@@ -3,6 +3,7 @@ package com.achelous.spring.servlet;
 import com.achelous.spring.annotation.Controller;
 import com.achelous.spring.annotation.RequestMapping;
 import com.achelous.spring.annotation.RequestParam;
+import com.achelous.spring.aop.AopProxyUtils;
 import com.achelous.spring.context.ApplicationContext;
 import com.achelous.spring.webmvc.HandlerAdapter;
 import com.achelous.spring.webmvc.HandlerMapping;
@@ -169,8 +170,15 @@ public class DispatchServlet extends HttpServlet {
         String[] beanNames = context.getBeanDefinitionNames();
 
         for (String beanName: beanNames) {
-            Object controller = context.getBean(beanName);
-
+            // 这里因为增加了 aop代理  获取到的是代理对象(proxy$xx) 读取不到注解
+            Object proxyController = context.getBean(beanName);
+            Object controller;
+            try {
+                controller = AopProxyUtils.getTargetObject(proxyController);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return ;
+            }
             Class<?> clazz = controller.getClass();
             // 判断是否具有制定注解
             if (!clazz.isAnnotationPresent(Controller.class)) {continue;}
@@ -191,7 +199,7 @@ public class DispatchServlet extends HttpServlet {
                 String regex = ("/" + baseUrl + requestMapping.value().replaceAll("\\*", ".*")).replaceAll("/+", "/");
                 Pattern pattern = Pattern.compile(regex);
 
-                this.handlerMappings.add(new HandlerMapping(pattern, controller, method));
+                this.handlerMappings.add(new HandlerMapping(pattern, proxyController, method));
 
             }
 

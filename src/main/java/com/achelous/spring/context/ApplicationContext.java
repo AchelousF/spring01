@@ -3,6 +3,7 @@ package com.achelous.spring.context;
 import com.achelous.spring.annotation.Autowire;
 import com.achelous.spring.annotation.Controller;
 import com.achelous.spring.annotation.Service;
+import com.achelous.spring.aop.AopConfig;
 import com.achelous.spring.beans.BeanDefinition;
 import com.achelous.spring.beans.BeanPostProcessor;
 import com.achelous.spring.beans.BeanWrapper;
@@ -10,23 +11,24 @@ import com.achelous.spring.context.support.BeanDefinitionReader;
 import com.achelous.spring.core.BeanFactory;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @Auther: fanJiang
  * @Date: Create in 20:20 2018/4/24
  */
-public class ApplicationContext implements BeanFactory{
+public class ApplicationContext extends DefaultListableBeanFactory implements BeanFactory{
 
     private String [] configLocations;
 
     private BeanDefinitionReader reader;
 
-    // 用来保存 配置信息
-    private Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<>();
 
     // 用来保证  注册式单例的容器
     private final Map<String, Object> beanCacheMap = new ConcurrentHashMap<>();
@@ -102,7 +104,7 @@ public class ApplicationContext implements BeanFactory{
             String autowireBeanName = autowire.value().trim();
 
             if ("".equals(autowireBeanName)) {
-                autowireBeanName = field.getType().getName();
+                autowireBeanName = field.getType().getSimpleName();
             }
 
             field.setAccessible(true);
@@ -111,7 +113,7 @@ public class ApplicationContext implements BeanFactory{
                 // 在这里调用自动注入可能会有问题   因为被依赖对象可能还未实例化
                 // 判空   如果被依赖对象还未被实例化   递归调用getBean方法对被依赖对象进行实例化
                 if (null == this.beanWrapperMap.get(autowireBeanName)) {
-                    getBean(beanName);
+                    getBean(autowireBeanName);
                 }
                 field.set(instance, this.beanWrapperMap.get(autowireBeanName).getWrapperInstance());
             } catch (IllegalAccessException e) {
@@ -189,13 +191,16 @@ public class ApplicationContext implements BeanFactory{
             beanPostProcessor.postPrecessBeforeInitialization(instance, beanName);
 
             BeanWrapper beanWrapper = new BeanWrapper(instance);
+
+            beanWrapper.setAopConfig(instantiateAopConfig(beanDefinition));
+
             beanWrapper.setPostProcessor(beanPostProcessor);
             this.beanWrapperMap.put(beanName, beanWrapper);
 
             // 在实例初始化之后的  处理器
             beanPostProcessor.postPrecessAfterInitialization(instance, beanName);
 
-            populateBean(beanName, instance);
+            populateBean(beanName, beanWrapper.getOriginalInstance());
 
             return this.beanWrapperMap.get(beanName).getWrapperInstance();
         } catch (Exception e) {
@@ -204,6 +209,39 @@ public class ApplicationContext implements BeanFactory{
 
         return null;
     }
+
+    private AopConfig instantiateAopConfig(BeanDefinition beanDefinition) throws Exception {
+        AopConfig config = new AopConfig();
+
+        // 解析切面表达式    (获取需要增强的方法)
+        String expression = reader.getConfig().getProperty("pointCut");
+        // 解析before 和 after 方法    增强逻辑
+        String [] before = reader.getConfig().getProperty("aspectBefore").split("\\s");
+        String [] after = reader.getConfig().getProperty("aspectAfter").split("\\s");
+
+        String className = beanDefinition.getBeanClassName();
+
+        // 获取beanDefinition
+        Class<?> clazz = Class.forName(className);
+
+        // 切面表达式正则
+        Pattern pattern = Pattern.compile(expression);
+
+        //  这里因为before 方法和after方法在同一个类中   仅解析before[0]
+        Class<?> aspectClass = Class.forName(before[0]);
+
+        for (Method method: clazz.getMethods()) {
+            // 判断方法是否匹配切面表达式
+            Matcher matcher = pattern.matcher(method.toString());
+            if (matcher.matches()) {
+                // 如果匹配说明该方法需要 aop增强  将增加方法增加到aopConfig中。
+                config.put(method, aspectClass.newInstance(), new Method[]{aspectClass.getMethod(before[1]),aspectClass.getMethod(after[1])});
+            }
+        }
+
+        return config;
+    }
+
 
     // 通过beanDefinition 对bean 实例化
     private Object instantiateBean(BeanDefinition beanDefinition) {

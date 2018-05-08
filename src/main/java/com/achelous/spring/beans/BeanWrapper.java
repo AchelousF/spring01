@@ -1,5 +1,8 @@
 package com.achelous.spring.beans;
 
+import com.achelous.spring.aop.AopConfig;
+import com.achelous.spring.aop.AopProxy;
+
 /**
  * @Auther: fanJiang
  * @Date: Create in 20:29 2018/4/24
@@ -11,17 +14,24 @@ public class BeanWrapper {
     private BeanPostProcessor postProcessor;
 
 
+    private AopProxy aopProxy = new AopProxy();
+
     private Object wrapperInstance;
     // 原始的    通过反射new出来的对象   要把其包装起来并保存
     private Object originalInstance;
 
     public BeanWrapper(Object wrapperInstance) {
-        this.wrapperInstance = wrapperInstance;
+        //  添加动态代理  代码
+        this.wrapperInstance = aopProxy.getProxy(wrapperInstance);
         this.originalInstance = wrapperInstance;
     }
 
     public Object getWrapperInstance() {
         return wrapperInstance;
+    }
+
+    public Object getOriginalInstance() {
+        return originalInstance;
     }
 
     public BeanPostProcessor getPostProcessor() {
@@ -40,5 +50,8 @@ public class BeanWrapper {
     }
 
 
+    public void setAopConfig(AopConfig aopConfig) {
+        aopProxy.setConfig(aopConfig);
+    }
 
 }
