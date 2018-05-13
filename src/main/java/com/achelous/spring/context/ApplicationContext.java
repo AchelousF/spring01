@@ -3,12 +3,14 @@ package com.achelous.spring.context;
 import com.achelous.spring.annotation.Autowire;
 import com.achelous.spring.annotation.Controller;
 import com.achelous.spring.annotation.Service;
+import com.achelous.spring.annotation.Transactional;
 import com.achelous.spring.aop.AopConfig;
 import com.achelous.spring.beans.BeanDefinition;
 import com.achelous.spring.beans.BeanPostProcessor;
 import com.achelous.spring.beans.BeanWrapper;
 import com.achelous.spring.context.support.BeanDefinitionReader;
 import com.achelous.spring.core.BeanFactory;
+import com.achelous.spring.transaction.TransactionManager;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -231,10 +233,17 @@ public class ApplicationContext extends DefaultListableBeanFactory implements Be
         Class<?> aspectClass = Class.forName(before[0]);
 
         for (Method method: clazz.getMethods()) {
+
             // 判断方法是否匹配切面表达式
             Matcher matcher = pattern.matcher(method.toString());
             if (matcher.matches()) {
                 // 如果匹配说明该方法需要 aop增强  将增加方法增加到aopConfig中。
+                // 判断当前方法是否添加了@Transaction 注解  若有添加当前事务到aopConfig中
+                if (method.isAnnotationPresent(Transactional.class)) {
+                    config.put(method, aspectClass.newInstance(),new Method[]{aspectClass.getMethod(before[1]),aspectClass.getMethod(after[1])}, new TransactionManager());
+                    continue;
+                }
+
                 config.put(method, aspectClass.newInstance(), new Method[]{aspectClass.getMethod(before[1]),aspectClass.getMethod(after[1])});
             }
         }

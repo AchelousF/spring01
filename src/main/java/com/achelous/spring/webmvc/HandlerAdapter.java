@@ -40,7 +40,7 @@ public class HandlerAdapter {
         Map<String, String [] > parameterMap = req.getParameterMap();
 
         // 3. 构造实参列表
-        Object[] paramValues = new Object[parameterMap.size()];
+        Object[] paramValues = new Object[parameterMap.size() + 2];
 
         for (Map.Entry<String, String[]> param : parameterMap.entrySet()) {
             String value = Arrays.toString(param.getValue()).replaceAll("\\[\\]", "").replaceAll("\\s", "");

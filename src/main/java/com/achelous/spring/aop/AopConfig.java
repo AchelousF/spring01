@@ -1,5 +1,7 @@
 package com.achelous.spring.aop;
 
+import com.achelous.spring.transaction.TransactionManager;
+
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
@@ -23,6 +25,10 @@ public class AopConfig {
         this.points.put(target, new Aspect(aspect, points));
     }
 
+    public void put(Method target, Object aspect, Method[] points, TransactionManager transactionManager) {
+        this.points.put(target, new Aspect(aspect, points, transactionManager));
+    }
+
     public Aspect get (Method method) {
         return this.points.get(method);
     }
@@ -31,15 +37,25 @@ public class AopConfig {
         return this.points.containsKey(method);
     }
 
-
     // 对增强的代码封装
     public class Aspect {
         private Object aspect; //  对象的调用者  切面对象
-        private Method [] points; //   @before @after  增强方法
+        private Method [] points; //   @beginTransaction @after  增强方法
+        private TransactionManager transactionManager;
 
         public Aspect(Object aspect, Method[] points) {
             this.aspect = aspect;
             this.points = points;
+        }
+
+        public Aspect(Object aspect, Method[] points, TransactionManager transactionManager) {
+            this.aspect = aspect;
+            this.points = points;
+            this.transactionManager = transactionManager;
+        }
+
+        public TransactionManager getTransactionManager() {
+            return transactionManager;
         }
 
         public Object getAspect() {

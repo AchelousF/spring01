@@ -11,6 +11,7 @@ import com.achelous.spring.webmvc.ModelAndView;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.util.HashMap;
 
 /**
  * @Auther: fanJiang
@@ -30,7 +31,7 @@ public class DemoAction {
 
 
         System.out.println(s);
-        return null;
+        return new ModelAndView(s, new HashMap<String, Object>());
     }
 
 }

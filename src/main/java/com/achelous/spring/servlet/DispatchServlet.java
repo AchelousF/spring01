@@ -199,7 +199,7 @@ public class DispatchServlet extends HttpServlet {
                 String regex = ("/" + baseUrl + requestMapping.value().replaceAll("\\*", ".*")).replaceAll("/+", "/");
                 Pattern pattern = Pattern.compile(regex);
 
-                this.handlerMappings.add(new HandlerMapping(pattern, proxyController, method));
+                this.handlerMappings.add(new HandlerMapping(pattern, controller, method));
 
             }
 
@@ -208,7 +208,7 @@ public class DispatchServlet extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        super.doPost(req, resp);
+        doPost(req, resp);
     }
 
     @Override
@@ -216,6 +216,7 @@ public class DispatchServlet extends HttpServlet {
         try {
             doDispatch(req, resp);
         } catch (Exception e) {
+            e.printStackTrace();
             resp.getWriter().write("500 Exception");
         }
     }
